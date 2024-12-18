@@ -52,23 +52,12 @@ const backinfront = new Backinfront({
   formatDataBeforeSave: () => {
     return JSON.parse(JSON.stringify(data))
   },
-  onRouteError: ({ route, error }) => {
-    console.warn(`[Backinfront][RouteError] ${route.url.href}`, error)
-  },
-  onRouteSuccess: ({ route, result }) => {
-    console.info(`[Backinfront][RouteSuccess] ${route.url.href}`, result)
-  },
-  onPopulateSuccess: () => {
-    console.warn('[Backinfront][PopulateSuccess]')
-  },
-  onPopulateError: ({ error }) => {
-    console.warn('[Backinfront][PopulateError]', error)
-  },
-  onSyncSuccess: () => {
-    console.warn('[Backinfront][SyncSuccess]')
-  },
-  onSyncError: ({ error }) => {
-    console.warn('[Backinfront][SyncError]', error)
+  onRequest: ({ route, result, error }) => {
+    if (error) {
+      console.warn(`[Backinfront][Request Error] ${route.url.href}`, error)
+    } else {
+      console.info(`[Backinfront][Request Success] ${route.url.href}`, result)
+    }
   }
 })
 

@@ -3,9 +3,7 @@ import {
   deduplicateArray,
   getDeepValue,
   isAfterDate,
-  isArray,
   mergeObject,
-  parseDate,
   stringifySearchParams,
   typecheck,
   waitUntil
@@ -54,13 +52,8 @@ export default class Backinfront {
   getSession = () => null
   formatRouteSearchParam = (value) => value
   formatRoutePathParam = (value) => value
-  onRouteError = () => null
-  onRouteSuccess = () => null
-  onPopulateSuccess = () => null
-  onPopulateError = () => null
-  onSyncSuccess = () => null
-  onSyncError = () => null
   formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object
+  onRequest = () => null
 
   /**
    * @constructor
@@ -77,12 +70,7 @@ export default class Backinfront {
    * @param {function} [options.formatDataBeforeSave] format data before insertion into indexeddb
    * @param {function} [options.formatRouteSearchParam] format Request's search params (example: transform comma separated string into array)
    * @param {function} [options.formatRoutePathParam] format Route's customs params
-   * @param {function} [options.onRouteSuccess]
-   * @param {function} [options.onRouteError]
-   * @param {function} [options.onPopulateSuccess]
-   * @param {function} [options.onPopulateError]
-   * @param {function} [options.onSyncSuccess]
-   * @param {function} [options.onSyncError]
+   * @param {function} [options.onRequest]
    */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
@@ -102,12 +90,7 @@ export default class Backinfront {
           formatDataBeforeSave: { type: 'function' },
           formatRouteSearchParam: { type: 'function' },
           formatRoutePathParam: { type: 'function' },
-          onRouteSuccess: { type: 'function' },
-          onRouteError: { type: 'function' },
-          onPopulateSuccess: { type: 'function' },
-          onPopulateError: { type: 'function' },
-          onSyncSuccess: { type: 'function' },
-          onSyncError: { type: 'function' }
+          onRequest: { type: 'function' }
         }]
       }
     })
@@ -210,7 +193,6 @@ export default class Backinfront {
       // Force the abortion
       // throw an error if the transaction has been completed prematurely
       try { ctx.transaction.abort() } catch {}
-      this.onRouteError({ route, error: routeHandlerError })
       response = new Response(undefined, {
         status: 500,
         statustext: `Route handler error: ${routeHandlerError.message}`
@@ -219,9 +201,10 @@ export default class Backinfront {
       // Force the commit
       // throw an error if the transaction has been completed prematurely
       try { ctx.transaction.commit() } catch {}
-      this.onRouteSuccess({ route, result: routeHandlerResult })
       response = new Response(JSON.stringify(routeHandlerResult))
     }
+
+    this.onRequest({ route, result: routeHandlerResult, error: routeHandlerError })
 
     return response
   }
@@ -337,7 +320,7 @@ export default class Backinfront {
           if (has(newStoreSchema.indexes, indexName)) {
             const newIndexKeyPath = newStoreSchema.indexes[indexName]
             if (
-              (isArray(currentIndexKeyPath) && isArray(newIndexKeyPath) && !currentIndexKeyPath.every((item, position) => item === newIndexKeyPath[position])) ||
+              (Array.isArray(currentIndexKeyPath) && Array.isArray(newIndexKeyPath) && !currentIndexKeyPath.every((item, position) => item === newIndexKeyPath[position])) ||
               currentIndexKeyPath !== newIndexKeyPath
             ) {
               databaseMigrations.push(
@@ -523,31 +506,25 @@ export default class Backinfront {
     // Process filter options
     const storeNames = Object.keys(this.stores).filter(storeName => stores.includes(storeName))
 
-    try {
-      const response = await this.#fetch({
-        method: 'GET',
-        url: this.populateUrl,
-        searchParams: {
-          storeNames
-        }
+    const response = await this.#fetch({
+      method: 'GET',
+      url: this.populateUrl,
+      searchParams: {
+        storeNames
+      }
+    })
+
+    await Promise.all(
+      Object.entries(response).map(async ([storeName, rows]) => {
+        // Here we use one transaction per store instead of a global one
+        // because high number of inserts on the same transaction can be slow
+        const store = await this._openStore(storeName, 'readwrite')
+
+        return Promise.all(
+          rows.map(element => store.put(element))
+        )
       })
-
-      await Promise.all(
-        Object.entries(response).map(async ([storeName, rows]) => {
-          // Here we use one transaction per store instead of a global one
-          // because high number of inserts on the same transaction can be slow
-          const store = await this._openStore(storeName, 'readwrite')
-
-          return Promise.all(
-            rows.map(element => store.put(element))
-          )
-        })
-      )
-
-      this.onPopulateSuccess()
-    } catch (error) {
-      this.onPopulateError({ error })
-    }
+    )
   }
 
   /**
@@ -555,7 +532,7 @@ export default class Backinfront {
    */
   async sync () {
     if (this.#syncInProgress) {
-      return null
+      return
     }
 
     try {
@@ -612,8 +589,9 @@ export default class Backinfront {
         const store = await this._openStore(storeName, transaction)
         await store.put(data)
 
-        if (!nextLastChangeAt || isAfterDate(parseDate(createdAt), nextLastChangeAt)) {
-          nextLastChangeAt = parseDate(createdAt)
+        const createdDate = new Date(createdAt)
+        if (!nextLastChangeAt || isAfterDate(createdDate, nextLastChangeAt)) {
+          nextLastChangeAt = createdDate
         }
       }
 
@@ -626,10 +604,8 @@ export default class Backinfront {
       if (clientData.length) {
         await syncQueueStore.clear()
       }
-
-      this.onSyncSuccess()
     } catch (error) {
-      this.onSyncError({ error })
+      throw error
     } finally {
       this.#syncInProgress = false
     }

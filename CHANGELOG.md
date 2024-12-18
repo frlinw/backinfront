@@ -1,3 +1,9 @@
+
+# 6.0.0
+
+- breaking(Backinfront): Replace `onRouteError` and `onRouteSuccess` by `onRequest`
+- breaking(Backinfront): Remove `onSyncSucces`, `onSyncError`, `onPopulateSuccess` and `onPopulateError`. `populate` and `sync` functions will throw directly instead.
+
 # 5.0.0
 
 - breaking(Backinfront): Remove `authentication`. Use the new `headers` method instead.

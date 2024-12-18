@@ -15,7 +15,7 @@
 
 # What is this useful for ?
 
-Backinfront is both the manager of your browser database and a router which handles requests locally. If you are building an offline first web app which needs sync capabilities, Backinfront is probably the tool your are looking for.
+Backinfront is both the manager of your browser database and a router which handles requests locally. If you are building an offline first web app which needs sync capabilities, Backinfront may be the tool your are looking for.
 
 # Browser support
 
@@ -90,8 +90,8 @@ interface BackinfrontOptions {
   populateUrl: string,
   // URL used for database synchronization
   syncUrl: string,
-  // Provides a JWT to authenticate requests on the server
-  // Example: add authorization header to authenticate the request
+  // Set headers to your requests
+  // Example: add authorization header to authenticate a request
   headers?(): Promise<Object>,
   // Key to use when the result contains count & data
   collectionCountKey?: string,
@@ -106,17 +106,7 @@ interface BackinfrontOptions {
   // Format path params of a request handled offline
   formatRoutePathParam?(pathParam: string): any,
   // Hook triggered after a successful offline request
-  onRouteSuccess?({ route: Route, result: object | Array<object> }): void,
-  // Hook triggered after a failed offline request
-  onRouteError?({ route: Route, error: Error }): void,
-  // Hook triggered after a successful database initial population
-  onPopulateSuccess?(): void,
-  // Hook triggered after a failure during database initial population
-  onPopulateError?({ error: Error }): void,
-  // Hook triggered after a successful database synchronization
-  onSyncSuccess?(): void,
-  // Hook triggered after a failure during database synchronization
-  onSyncError?({ error: Error }): void
+  onRequest?({ route: Route, result: Record<string, unknown> | Array<Record<string, unknown>> | null, error: Error | undefined }): void,
 }
 
 interface BackinfrontAPI {
