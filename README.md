@@ -106,7 +106,7 @@ interface BackinfrontOptions {
   // Format path params of a request handled offline
   formatRoutePathParam?(pathParam: string): any,
   // Hook triggered after a successful offline request
-  onRequest?({ route: Route, result: Record<string, unknown> | Array<Record<string, unknown>> | null, error: Error | undefined }): void,
+  onRequest?({ route: Route, result: Record<string, unknown> | Array<Record<string, unknown>> | undefined, error: Error | undefined }): void,
 }
 
 interface BackinfrontAPI {
