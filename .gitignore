@@ -10,8 +10,6 @@ npm-debug.log*
 .npm/
 # NPM installed packages
 node_modules/
-# NPM lock file
-package-lock.json
 # Output of 'npm pack'
 *.tgz
 
